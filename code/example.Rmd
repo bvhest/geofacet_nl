@@ -1,0 +1,154 @@
+---
+title: "Ontwikkeling huizenprijs in Nederland"
+author: "BvH"
+date: "21 maart 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+De volgende demo is bedoeld om het gebruik van ['facet_geo'](https://hafen.github.io/geofacet/) te verduidelijken.
+Zie ook de blog-post [Introducing geofacet](http://ryanhafen.com/blog/geofacet).
+
+Deze demonstratie toont de ontwikkeling van de huizenprijzen per provincie sinds 1995.
+
+```{r data, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+#
+# Laad data mbt de ontwikkeling van huizenprijzen in Nederland en toon per provincie.
+#
+# BvH 21-3-2018
+#
+
+library(tidyverse)
+
+###############################################################################################################
+# laad data
+###############################################################################################################
+huizenprijzen.r <-
+  readr::read_csv2(file = "../data/Bestaande_koopwoningen_woningtype_81885NED_UntypedDataSet_21032018_214617.csv") %>%
+  dplyr::filter(grepl("JJ00", Perioden)) %>% 
+  # selecteer de kolommen die jaar (en kwartaal) en bbp bevatten:
+  dplyr::select(c("RegioS", "Perioden", "PrijsindexBestaandeKoopwoningen_1", "AantalVerkochteWoningen_4", "GemiddeldeVerkoopprijs_7")) %>% 
+  # hernoem kolom-namen:
+  dplyr::rename(jaar = Perioden,
+                regio = RegioS,
+                prijsindex = PrijsindexBestaandeKoopwoningen_1,
+                aantalVerkocht = AantalVerkochteWoningen_4,
+                gemVerkoopprijs = GemiddeldeVerkoopprijs_7) %>%
+  # waarden in juiste numerieke formaat omzetten:
+  dplyr::mutate(jaar = as.integer(stringr::str_replace(jaar, "JJ00", ""))) 
+
+# samenvoegen met metadata (namen van de provincies)
+huizenprijzen.c <-
+  readr::read_csv2(file = "../data/metadata_provincies.csv") %>%
+  dplyr::full_join(huizenprijzen.r, 
+                   by = "regio")
+```
+
+Gebruik een voor-gedefinieerd grid voor het land of de regio waarvoor je een trend wilt tonen of definieer zelf een grid.
+
+Voor de Nederlandse provincies is nog geen grid beschikbaar, dus dat definieeren we zelf.
+
+```{r visualisatie1, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(geofacet)
+
+###############################################################################################################
+# toon data
+###############################################################################################################
+# definieer grid met de posities van de Nederlandse provincies
+nl_province_grid1 <- 
+  data.frame(
+  row = c(1, 1, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6),
+  col = c(4, 3, 4, 4, 3, 2, 4, 3, 2, 3, 1, 4),
+  code = c("Gr", "Fr", "Dr", "Ov", "Fl", "NH", "Ge", "Ut", "ZH", "NB", "Ze", "Li"),
+  name = c("Groningen", "Friesland", "Drenthe", "Overijssel", "Flevoland", "Noord-Holland", "Gelderland", "Utrecht", "Zuid-Holland", "Noord-Brabant", "Zeeland", "Limburg"),
+  stringsAsFactors = FALSE)
+
+# toon het grid
+grid_preview(nl_province_grid1)
+```
+
+Dit lijkt (voor de kenner) we een beetje op de vorm van Nederland.
+
+Kunnen we met dit grid op een visueel inzichtelijke en aantrekkelijke manier een beeld krijgen in de ontwikkeling per provincie? Bijvoorbeeld van de ontwikkeling van de prijsindex?
+
+```{r visualisatie1, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# en laat zien wat je met zo'n grid en facet_geo kunt doen: toon de ontwikkeling per provincie.
+ggplot(huizenprijzen.c, 
+       aes(jaar, prijsindex)) +
+  geom_line(color = "steelblue") +
+  facet_geo(~ provincie, 
+            grid = nl_province_grid1, 
+            scales = "free_y") +
+  scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
+  labs(
+    title = "Ontwikkeling huizenprijsindex per provincie (100)",
+    caption = "data: opendata.cbs.nl",
+    y = "huizenprijsindex") +
+  theme_bw()
+```
+
+Hoe verhoudt zich het aantal verkochte huizen voor en na de economische crisis?
+
+```{r visualisatie2, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(huizenprijzen.c, 
+       aes(jaar, aantalVerkocht)) +
+  geom_line(color = "steelblue") +
+  facet_geo(~ provincie, 
+            grid = nl_province_grid1, 
+            scales = "free_y") +
+  scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
+  labs(
+    title = "Ontwikkeling aantal verkochte huizen per provincie",
+    caption = "data: opendata.cbs.nl",
+    y = "aantal") +
+  theme_bw()
+```
+
+Sinds de economie uit het dal is gekomen, is er een rechte lijn in de toename van het aantal verkochte huizen.
+Het valt op dat het aantal verkochte huizen in Noord-Holland de afgelopen jaren een plafond heeft bereikt.
+
+Wat is de ontwikkeling van de gemiddelde huizenprijs?
+
+```{r visualisatie3, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(scales)
+
+point <- scales::format_format(big.mark = ".", decimal.mark = ",", scientific = FALSE)
+
+ggplot(huizenprijzen.c, 
+       aes(jaar, gemVerkoopprijs)) +
+  geom_line(color = "steelblue") +
+  facet_geo(~ provincie, 
+            grid = nl_province_grid1, 
+            scales = "free_y") +
+  scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
+  scale_y_continuous(breaks = c(100000, 200000, 300000), 
+                     labels = point) +
+  labs(
+    title = "Ontwikkeling gemiddelde verkoopprijs per provincie",
+    caption = "data: opendata.cbs.nl",
+    y = "gemiddelde verkoopprijs (euro)") +
+  theme_bw()
+```
+
+Deze grafiek vertoond een vergelijkbare trend tussen de provincies. Maar de absolute waarde van de gemiddelde verkoopprijs van huizen verschilt per provincie. Daarom een tweede plot met een vaste y-as om de verschillen per provincie te benadrukken. Let op Noord-Holland (of eigenlijk Amsterdam...).
+
+```{r visualisatie4, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(huizenprijzen.c, 
+       aes(jaar, gemVerkoopprijs)) +
+  geom_line(color = "steelblue") +
+  facet_geo(~ provincie, 
+            grid = nl_province_grid1) +
+  scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
+  scale_y_continuous(breaks = c(100000, 200000, 300000), 
+                     labels = point) +
+  labs(
+    title = "Ontwikkeling gemiddelde verkoopprijs per provincie",
+    caption = "data: opendata.cbs.nl",
+    y = "gemiddelde verkoopprijs (euro)") +
+  theme_bw()
+```
