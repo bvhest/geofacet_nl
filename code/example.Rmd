@@ -29,10 +29,14 @@ library(tidyverse)
 # laad data
 ###############################################################################################################
 huizenprijzen.r <-
-  readr::read_csv2(file = "../data/Bestaande_koopwoningen_woningtype_81885NED_UntypedDataSet_21032018_214617.csv") %>%
+  readr::read_csv2(file = "../data/Bestaande_koopwoningen_woningtype_81885NED_UntypedDataSet_21032018.csv") %>%
   dplyr::filter(grepl("JJ00", Perioden)) %>% 
   # selecteer de kolommen die jaar (en kwartaal) en bbp bevatten:
-  dplyr::select(c("RegioS", "Perioden", "PrijsindexBestaandeKoopwoningen_1", "AantalVerkochteWoningen_4", "GemiddeldeVerkoopprijs_7")) %>% 
+  dplyr::select(c("RegioS", 
+                  "Perioden", 
+                  "PrijsindexBestaandeKoopwoningen_1", 
+                  "AantalVerkochteWoningen_4", 
+                  "GemiddeldeVerkoopprijs_7")) %>% 
   # hernoem kolom-namen:
   dplyr::rename(jaar = Perioden,
                 regio = RegioS,
@@ -60,7 +64,7 @@ library(geofacet)
 # toon data
 ###############################################################################################################
 # definieer grid met de posities van de Nederlandse provincies
-nl_province_grid1 <- 
+nl_provinces_grid1 <- 
   data.frame(
   row = c(1, 1, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6),
   col = c(4, 3, 4, 4, 3, 2, 4, 3, 2, 3, 1, 4),
@@ -69,20 +73,20 @@ nl_province_grid1 <-
   stringsAsFactors = FALSE)
 
 # toon het grid
-grid_preview(nl_province_grid1)
+grid_preview(nl_provinces_grid1)
 ```
 
 Dit lijkt (voor de kenner) we een beetje op de vorm van Nederland.
 
 Kunnen we met dit grid op een visueel inzichtelijke en aantrekkelijke manier een beeld krijgen in de ontwikkeling per provincie? Bijvoorbeeld van de ontwikkeling van de prijsindex?
 
-```{r visualisatie1, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+```{r visualisatie1b, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
 # en laat zien wat je met zo'n grid en facet_geo kunt doen: toon de ontwikkeling per provincie.
 ggplot(huizenprijzen.c, 
        aes(jaar, prijsindex)) +
   geom_line(color = "steelblue") +
   facet_geo(~ provincie, 
-            grid = nl_province_grid1, 
+            grid = nl_provinces_grid1, 
             scales = "free_y") +
   scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
   labs(
@@ -99,7 +103,7 @@ ggplot(huizenprijzen.c,
        aes(jaar, aantalVerkocht)) +
   geom_line(color = "steelblue") +
   facet_geo(~ provincie, 
-            grid = nl_province_grid1, 
+            grid = nl_provinces_grid1, 
             scales = "free_y") +
   scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
   labs(
@@ -123,7 +127,7 @@ ggplot(huizenprijzen.c,
        aes(jaar, gemVerkoopprijs)) +
   geom_line(color = "steelblue") +
   facet_geo(~ provincie, 
-            grid = nl_province_grid1, 
+            grid = nl_provinces_grid1, 
             scales = "free_y") +
   scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
   scale_y_continuous(breaks = c(100000, 200000, 300000), 
@@ -142,7 +146,7 @@ ggplot(huizenprijzen.c,
        aes(jaar, gemVerkoopprijs)) +
   geom_line(color = "steelblue") +
   facet_geo(~ provincie, 
-            grid = nl_province_grid1) +
+            grid = nl_provinces_grid1) +
   scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
   scale_y_continuous(breaks = c(100000, 200000, 300000), 
                      labels = point) +
